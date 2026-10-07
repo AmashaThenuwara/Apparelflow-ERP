@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { Navbar } from "./Navbar";
-import { Role } from "@prisma/client";
+import { Role } from "@/lib/types";
 
 interface AppLayoutProps {
   children: React.ReactNode;

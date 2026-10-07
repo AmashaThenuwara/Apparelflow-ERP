@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import Link from "next/link";
-import { Role, SewingStatus } from "@prisma/client";
+import { Role, SewingStatus } from "@/lib/types";
 
 interface SewingOrderItem {
   id: string;

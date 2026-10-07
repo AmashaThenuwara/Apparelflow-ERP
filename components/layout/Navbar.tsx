@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { RoleBadge } from "@/components/ui/Badge";
-import { Role } from "@prisma/client";
+import { Role } from "@/lib/types";
 
 interface NavbarProps {
   user: {

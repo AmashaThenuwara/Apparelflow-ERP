@@ -6,7 +6,7 @@ import { AppLayout } from "@/components/layout/AppLayout";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import Link from "next/link";
-import { Role } from "@/lib/types";
+import { Role } from "@prisma/client";
 
 interface ComponentRow {
   name: string;

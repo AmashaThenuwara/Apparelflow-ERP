@@ -1,5 +1,5 @@
 import React from "react";
-import { OrderStatus, Role } from "@/lib/types";
+import { OrderStatus, Role } from "@prisma/client";
 
 interface BadgeProps {
   children: React.ReactNode;

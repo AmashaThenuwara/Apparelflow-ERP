@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "prisma generate"
+    "lint": "eslint"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.10.0",
@@ -33,11 +32,5 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.7"
-  },
-  "allowScripts": {
-    "@prisma/engines@7.10.0": true,
-    "esbuild@0.28.2": true,
-    "prisma@7.10.0": true,
-    "unrs-resolver@1.12.2": true
   }
 }

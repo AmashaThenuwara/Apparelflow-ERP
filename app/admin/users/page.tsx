@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { RoleBadge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
-import { Role } from "@/lib/types";
+import { Role } from "@prisma/client";
 
 interface UserItem {
   id: string;

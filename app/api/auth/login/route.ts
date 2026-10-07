@@ -62,9 +62,8 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Login API error:", error);
-    const message = error instanceof Error ? error.message : "An unexpected error occurred during login";
     return NextResponse.json(
-      { success: false, message },
+      { success: false, message: "An unexpected error occurred during login" },
       { status: 500 }
     );
   }

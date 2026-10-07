@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
 import Link from "next/link";
-import { OrderStatus, Role, ItemCheckStatus } from "@/lib/types";
+import { OrderStatus, Role, ItemCheckStatus } from "@prisma/client";
 
 interface OrderDetail {
   id: string;

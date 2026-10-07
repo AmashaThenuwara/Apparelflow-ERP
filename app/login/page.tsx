@@ -36,39 +36,18 @@ export default function LoginPage() {
         return;
       }
 
-      window.location.href = "/dashboard";
+      router.push("/dashboard");
+      router.refresh();
     } catch {
       setError("Unable to connect to the server. Please try again.");
       setLoading(false);
     }
   };
 
-  const handleQuickLogin = async (demoEmail: string) => {
+  const handleQuickLogin = (demoEmail: string) => {
     setEmail(demoEmail);
     setPassword("ApparelFlow@2026");
-    setLoading(true);
     setError(null);
-
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: demoEmail, password: "ApparelFlow@2026" }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        setError(data.message || "Invalid email or password");
-        setLoading(false);
-        return;
-      }
-
-      window.location.href = "/dashboard";
-    } catch {
-      setError("Unable to connect to the server. Please try again.");
-      setLoading(false);
-    }
   };
 
   return (

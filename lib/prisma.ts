@@ -2,10 +2,12 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-const rawUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || "";
+const rawUrl = (process.env.DIRECT_URL || process.env.DATABASE_URL || "")
+  .replace(/^["']|["']$/g, "")
+  .trim();
 
 if (!rawUrl) {
-  console.error("❌ CRITICAL ERROR: Neither DATABASE_URL nor DIRECT_URL environment variable is set on Vercel!");
+  console.error("❌ CRITICAL ERROR: Neither DIRECT_URL nor DATABASE_URL environment variable is set on Vercel!");
 }
 
 const cleanUrl = rawUrl.replace(/([?&])sslmode=[^&]+(&|$)/, "$1").replace(/[?&]$/, "");

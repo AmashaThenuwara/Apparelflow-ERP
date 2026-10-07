@@ -18,30 +18,30 @@ export function Button({
   ...props
 }: ButtonProps) {
   const sizeClasses = {
-    sm: "px-3 py-1.5 text-xs",
-    md: "px-4 py-2 text-sm",
+    sm: "px-3 py-1.5 text-xs font-medium",
+    md: "px-4 py-2 text-sm font-medium",
     lg: "px-5 py-2.5 text-base font-medium",
   };
 
   const variantStyles = {
     primary:
-      "bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 shadow-sm border border-blue-500/30",
+      "bg-blue-600 text-white hover:bg-blue-700 shadow-sm border border-blue-600 focus:ring-2 focus:ring-blue-500/20",
     secondary:
-      "bg-slate-800 text-slate-200 hover:bg-slate-700 border border-slate-700 hover:text-white",
+      "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-300 focus:ring-2 focus:ring-slate-300",
     danger:
-      "bg-gradient-to-r from-rose-600 to-red-600 text-white hover:from-rose-500 hover:to-red-500 border border-rose-500/30",
+      "bg-rose-600 text-white hover:bg-rose-700 shadow-sm border border-rose-600 focus:ring-2 focus:ring-rose-500/20",
     success:
-      "bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/30",
+      "bg-emerald-600 text-white hover:bg-emerald-700 shadow-sm border border-emerald-600 focus:ring-2 focus:ring-emerald-500/20",
     ghost:
-      "bg-transparent text-slate-400 hover:text-slate-100 hover:bg-slate-800/60",
+      "bg-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100",
     outline:
-      "bg-transparent text-blue-400 border border-blue-500/50 hover:bg-blue-950/40 hover:text-blue-300",
+      "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 hover:text-slate-900",
   };
 
   return (
     <button
       disabled={disabled || loading}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer active:scale-[0.98] ${sizeClasses[size]} ${variantStyles[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-md transition-colors focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer ${sizeClasses[size]} ${variantStyles[variant]} ${className}`}
       {...props}
     >
       {loading ? (

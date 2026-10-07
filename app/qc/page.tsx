@@ -14,140 +14,72 @@ export default async function QCDashboardPage() {
     redirect("/login");
   }
 
-  const [pendingReview, verifiedOrders, rejectedOrders] = await Promise.all([
-    prisma.cuttingOrder.findMany({
-      where: { status: OrderStatus.SUBMITTED },
-      include: {
-        recipe: true,
-        createdBy: { select: { name: true } },
-        verificationItems: true,
-      },
-      orderBy: { updatedAt: "desc" },
-    }),
-    prisma.cuttingOrder.findMany({
-      where: { status: { in: [OrderStatus.VERIFIED, OrderStatus.SENT_TO_SEWING] } },
-      include: {
-        recipe: true,
-        createdBy: { select: { name: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 6,
-    }),
-    prisma.cuttingOrder.findMany({
-      where: { status: OrderStatus.REJECTED },
-      include: {
-        recipe: true,
-        createdBy: { select: { name: true } },
-      },
-      orderBy: { updatedAt: "desc" },
-      take: 6,
-    }),
-  ]);
+  const pendingReview = await prisma.cuttingOrder.findMany({
+    where: { status: OrderStatus.SUBMITTED },
+    include: {
+      recipe: true,
+      createdBy: { select: { name: true } },
+    },
+    orderBy: { updatedAt: "desc" },
+  });
 
   return (
     <AppLayout user={user}>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black text-white">Quality Control (QC) Verification Gate</h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Inspection workstation. Batches must pass 100% of 5-point verification criteria to enter the Sewing Queue.
+      <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="border-b border-slate-200 pb-3">
+          <h1 className="text-xl font-bold text-slate-900">Pending Verification List</h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Cutting batches submitted for quality control verification.
           </p>
         </div>
 
-        {/* Action Required: Awaiting Verification */}
-        <Card
-          title={`Waiting for QC Verification (${pendingReview.length})`}
-          subtitle="Submitted cutting batches requiring physical inspection"
-        >
+        <Card title={`Pending Orders (${pendingReview.length})`}>
           {pendingReview.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-500">
-              ✓ All cutting batches have been verified. No pending inspections.
+              No cutting orders currently pending verification.
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pendingReview.map((ord) => (
-                <div
-                  key={ord.id}
-                  className="rounded-xl border border-amber-500/30 bg-amber-950/20 p-4 flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-xs font-bold text-white bg-slate-900 px-2 py-0.5 rounded border border-slate-700">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="border-b border-slate-200 uppercase text-[11px] text-slate-500 bg-slate-50">
+                  <tr>
+                    <th className="py-2.5 px-3 font-semibold">Order #</th>
+                    <th className="py-2.5 px-3 font-semibold">Recipe</th>
+                    <th className="py-2.5 px-3 font-semibold">Quantity</th>
+                    <th className="py-2.5 px-3 font-semibold">Status</th>
+                    <th className="py-2.5 px-3 text-right font-semibold">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {pendingReview.map((ord) => (
+                    <tr key={ord.id} className="hover:bg-slate-50">
+                      <td className="py-3 px-3 font-mono font-bold text-slate-900">
                         {ord.orderNumber}
-                      </span>
-                      <StatusBadge status={ord.status} />
-                    </div>
-                    <h4 className="text-sm font-bold text-slate-100">{ord.recipe.name}</h4>
-                    <p className="text-xs text-blue-400 font-semibold mt-1">
-                      {ord.quantity.toLocaleString()} pieces
-                    </p>
-                    <p className="text-[11px] text-slate-400 mt-2 line-clamp-2">
-                      {ord.notes || "Ready for inspection."}
-                    </p>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-amber-900/40">
-                    <Link
-                      href={`/qc/verification/${ord.id}`}
-                      className="block w-full text-center rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
-                    >
-                      Conduct 5-Point QC Inspection →
-                    </Link>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td className="py-3 px-3 font-medium text-slate-800">
+                        {ord.recipe.name}
+                      </td>
+                      <td className="py-3 px-3 font-semibold text-slate-700">
+                        {ord.quantity} pcs
+                      </td>
+                      <td className="py-3 px-3">
+                        <StatusBadge status={ord.status} />
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        <Link
+                          href={`/qc/verification/${ord.id}`}
+                          className="rounded bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700 inline-block"
+                        >
+                          Verify Order →
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </Card>
-
-        {/* Secondary lists: Approved & Rejected */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Approved & Verified Batches */}
-          <Card title="Recently Verified (Passed Gate)" subtitle="Dispatched or ready for sewing line">
-            <div className="space-y-3">
-              {verifiedOrders.map((ord) => (
-                <div
-                  key={ord.id}
-                  className="flex items-center justify-between p-3 rounded-xl border border-emerald-900/40 bg-emerald-950/20 text-xs"
-                >
-                  <div>
-                    <div className="font-mono font-bold text-white">{ord.orderNumber}</div>
-                    <div className="text-[11px] text-slate-400">{ord.recipe.name} • {ord.quantity} pcs</div>
-                  </div>
-                  <Link
-                    href={`/cutting/orders/${ord.id}`}
-                    className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
-                  >
-                    View Record →
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Rejected Batches */}
-          <Card title="Rejected Batches" subtitle="Returned to cutting table for rectification">
-            <div className="space-y-3">
-              {rejectedOrders.map((ord) => (
-                <div
-                  key={ord.id}
-                  className="flex items-center justify-between p-3 rounded-xl border border-rose-900/40 bg-rose-950/20 text-xs"
-                >
-                  <div>
-                    <div className="font-mono font-bold text-white">{ord.orderNumber}</div>
-                    <div className="text-[11px] text-slate-400">{ord.recipe.name} • {ord.quantity} pcs</div>
-                  </div>
-                  <Link
-                    href={`/cutting/orders/${ord.id}`}
-                    className="text-xs font-semibold text-rose-400 hover:text-rose-300"
-                  >
-                    Inspect Defect Report →
-                  </Link>
-                </div>
-              ))}
-            </div>
-          </Card>
-        </div>
       </div>
     </AppLayout>
   );

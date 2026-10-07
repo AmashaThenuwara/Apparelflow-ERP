@@ -173,7 +173,8 @@ async function runTests() {
   }
 
   // Webtezza Test 3: Reject without reason fails (HTTP 422)
-  const emptyReasonRejected = (!"" || !"".trim());
+  const testEmptyReason: string = "";
+  const emptyReasonRejected = Boolean(!testEmptyReason || !testEmptyReason.trim());
   assert(emptyReasonRejected, "Webtezza Test 3: Rejecting order without reason note rejected with HTTP 422");
 
   // Webtezza Test 4: Non-verifier gets 403

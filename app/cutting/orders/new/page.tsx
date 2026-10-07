@@ -12,8 +12,9 @@ interface RecipeOption {
   id: string;
   code: string;
   name: string;
-  version: string;
-  components: Array<{ name: string; quantity: number; unit: string }>;
+  fabricPerPiece: number;
+  wastageCap: number;
+  components: Array<{ name: string; ratio: number; unit: string }>;
 }
 
 function NewCuttingOrderForm() {
@@ -24,9 +25,9 @@ function NewCuttingOrderForm() {
   const [currentUser, setCurrentUser] = useState<{ userId: string; email: string; role: Role; name?: string } | null>(null);
   const [recipes, setRecipes] = useState<RecipeOption[]>([]);
   const [selectedRecipeId, setSelectedRecipeId] = useState(preselectedRecipeId || "");
-  const [orderNumber, setOrderNumber] = useState("");
-  const [quantity, setQuantity] = useState<number | "">(500);
-  const [notes, setNotes] = useState("");
+  const [quantity, setQuantity] = useState<number | "">(100);
+  const [fabricRollId, setFabricRollId] = useState("ROLL-001");
+  const [actualFabricUsed, setActualFabricUsed] = useState<number | "">(185);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +50,16 @@ function NewCuttingOrderForm() {
 
   const selectedRecipe = recipes.find((r) => r.id === selectedRecipeId);
 
+  const targetQtyNum = Number(quantity) || 0;
+  const expectedFabric = selectedRecipe && targetQtyNum > 0
+    ? Number((targetQtyNum * selectedRecipe.fabricPerPiece).toFixed(2))
+    : 0;
+
+  const actualFabricNum = Number(actualFabricUsed) || 0;
+  const estimatedWastagePct = expectedFabric > 0 && actualFabricNum > 0
+    ? Number((((actualFabricNum - expectedFabric) / expectedFabric) * 100).toFixed(2))
+    : 0;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRecipeId || !quantity || Number(quantity) <= 0) {
@@ -65,9 +76,9 @@ function NewCuttingOrderForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           recipeId: selectedRecipeId,
-          orderNumber: orderNumber.trim() || undefined,
           quantity: Number(quantity),
-          notes,
+          fabricRollId: fabricRollId.trim() || undefined,
+          actualFabricUsed: actualFabricUsed ? Number(actualFabricUsed) : undefined,
         }),
       });
 
@@ -87,122 +98,142 @@ function NewCuttingOrderForm() {
 
   if (loading || !currentUser) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#090d16] text-slate-400">
-        Loading...
+      <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500">
+        Loading form...
       </div>
     );
   }
 
   return (
     <AppLayout user={currentUser}>
-      <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/cutting/orders"
-            className="rounded-lg border border-slate-700/60 p-2 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-          </Link>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-200 pb-3">
           <div>
-            <h1 className="text-2xl font-black text-white">Create Cutting Order</h1>
-            <p className="text-xs text-slate-400">
-              Initialize a production batch for fabric spreading, cutting, and bundle tagging.
+            <h1 className="text-xl font-bold text-slate-900">Create Cutting Order</h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Specify batch target quantity and fabric roll metrics.
             </p>
           </div>
+          <Link href="/cutting/orders" className="text-xs text-blue-600 hover:underline">
+            ← Back to Orders
+          </Link>
         </div>
 
         {error && (
-          <div className="rounded-xl border border-rose-500/30 bg-rose-950/40 p-4 text-xs text-rose-300">
+          <div className="rounded-md border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Card title="Order Details" subtitle="Batch identification and garment selection">
+          <Card title="Batch Specification">
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Select Garment Recipe *
-                  </label>
-                  <select
-                    required
-                    value={selectedRecipeId}
-                    onChange={(e) => setSelectedRecipeId(e.target.value)}
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer"
-                  >
-                    {recipes.map((r) => (
-                      <option key={r.id} value={r.id}>
-                        [{r.code}] {r.name} (v{r.version})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
-                    Order Number (Leave blank to auto-generate)
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. CO-1006"
-                    value={orderNumber}
-                    onChange={(e) => setOrderNumber(e.target.value.toUpperCase())}
-                    className="w-full font-mono uppercase rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Recipe
+                </label>
+                <select
+                  required
+                  value={selectedRecipeId}
+                  onChange={(e) => setSelectedRecipeId(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 cursor-pointer"
+                >
+                  {recipes.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.name} ({r.code})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Target Production Quantity (Pieces) *
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Target Batch Quantity
                 </label>
                 <input
                   type="number"
                   min={1}
                   required
-                  placeholder="500"
+                  placeholder="100"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value ? parseInt(e.target.value) : "")}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-bold"
+                  className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-blue-500"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Cutting Floor Instructions & Fabric Lot Notes
-                </label>
-                <textarea
-                  rows={3}
-                  placeholder="e.g. Charcoal Grey 100% Combed Cotton, Lot #CG-992. 24 layers spread on Table 1."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Fabric Roll ID
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="ROLL-001"
+                    value={fabricRollId}
+                    onChange={(e) => setFabricRollId(e.target.value)}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Actual Fabric Used (Yards)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    placeholder="185"
+                    value={actualFabricUsed}
+                    onChange={(e) => setActualFabricUsed(e.target.value ? parseFloat(e.target.value) : "")}
+                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
+
+              {/* Fabric Wastage Metric Preview */}
+              {selectedRecipe && targetQtyNum > 0 && (
+                <div className="rounded-md border border-slate-200 bg-slate-50 p-3 text-xs space-y-1 text-slate-700">
+                  <div className="flex justify-between">
+                    <span>Standard Fabric Requirement:</span>
+                    <span className="font-semibold">{expectedFabric} yards ({selectedRecipe.fabricPerPiece} yds/pc)</span>
+                  </div>
+                  {actualFabricNum > 0 && (
+                    <div className="flex justify-between">
+                      <span>Calculated Wastage:</span>
+                      <span className={`font-semibold ${estimatedWastagePct > selectedRecipe.wastageCap ? "text-rose-600" : "text-emerald-600"}`}>
+                        {estimatedWastagePct}% (Cap: {selectedRecipe.wastageCap}%)
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
 
-          {/* Recipe Blueprint Preview */}
+          {/* Expected Component Counts */}
           {selectedRecipe && (
-            <Card
-              title={`Blueprint Preview: ${selectedRecipe.name}`}
-              subtitle={`Code: ${selectedRecipe.code} • ${selectedRecipe.components.length} pattern pieces per garment`}
-            >
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {selectedRecipe.components.map((c, i) => (
-                  <div
-                    key={i}
-                    className="rounded-lg border border-slate-800 bg-slate-950 p-2.5 text-center"
-                  >
-                    <div className="text-[11px] font-semibold text-slate-200">{c.name}</div>
-                    <div className="text-[10px] text-blue-400 font-mono mt-0.5">
-                      {quantity ? Number(quantity) * c.quantity : 0} {c.unit}s total
-                    </div>
-                  </div>
-                ))}
+            <Card title={`Expected Component Counts (${selectedRecipe.name})`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs text-slate-700">
+                  <thead className="border-b border-slate-200 uppercase text-[11px] text-slate-500 bg-slate-50">
+                    <tr>
+                      <th className="py-2 px-3 font-semibold">Component</th>
+                      <th className="py-2 px-3 font-semibold">Ratio</th>
+                      <th className="py-2 px-3 text-right font-semibold">Expected Count</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {selectedRecipe.components.map((c, i) => (
+                      <tr key={i}>
+                        <td className="py-2.5 px-3 font-medium text-slate-900">{c.name}</td>
+                        <td className="py-2.5 px-3 text-slate-600">1 : {c.ratio}</td>
+                        <td className="py-2.5 px-3 text-right font-bold text-blue-700">
+                          {targetQtyNum * c.ratio} {c.unit}s
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </Card>
           )}
@@ -214,7 +245,7 @@ function NewCuttingOrderForm() {
               </Button>
             </Link>
             <Button type="submit" loading={submitting}>
-              Create Order & Initialize QC Checklist
+              Create Cutting Order
             </Button>
           </div>
         </form>
@@ -227,7 +258,7 @@ export default function NewCuttingOrderPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex h-screen items-center justify-center bg-[#090d16] text-slate-400">
+        <div className="flex h-screen items-center justify-center bg-slate-50 text-slate-500">
           Loading...
         </div>
       }

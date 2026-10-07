@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   try {
     const user = await requireRole([Role.ADMIN, Role.CUTTING]);
     const body = await req.json();
-    const { recipeId, quantity, notes, orderNumber } = body;
+    const { recipeId, quantity, notes, orderNumber, fabricRollId, actualFabricUsed } = body;
 
     if (!recipeId || !quantity || Number(quantity) <= 0) {
       return NextResponse.json(
@@ -64,6 +64,22 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    const recipe = await prisma.recipe.findUnique({
+      where: { id: recipeId },
+      include: { components: true },
+    });
+
+    if (!recipe) {
+      return NextResponse.json({ success: false, message: "Recipe not found" }, { status: 404 });
+    }
+
+    const targetQty = Number(quantity);
+    const expectedFabric = targetQty * (recipe.fabricPerPiece || 1.5);
+    const actualFabric = actualFabricUsed ? Number(actualFabricUsed) : null;
+    const wastagePercentage = actualFabric && expectedFabric > 0
+      ? Number((((actualFabric - expectedFabric) / expectedFabric) * 100).toFixed(2))
+      : null;
 
     // Auto generate order number if not provided
     const count = await prisma.cuttingOrder.count();
@@ -81,28 +97,51 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Prepare verification items from recipe components or default checklist
+    const verificationItemsToCreate = recipe.components.length > 0
+      ? recipe.components.map((comp) => {
+          const expectedCompQty = targetQty * comp.ratio;
+          return {
+            componentName: comp.name,
+            componentCode: comp.code,
+            ratio: comp.ratio,
+            expectedQty: expectedCompQty,
+            actualQty: expectedCompQty,
+            trafficStatus: "GREEN",
+            title: comp.name,
+            expectedValue: `${expectedCompQty} ${comp.unit}s (${targetQty} pcs × ${comp.ratio})`,
+            status: "PASS" as const,
+          };
+        })
+      : DEFAULT_VERIFICATION_CHECKLIST.map((item) => ({
+          title: item.title,
+          expectedValue: item.expectedValue,
+          status: "PASS" as const,
+          trafficStatus: "GREEN",
+        }));
+
     // Create in a database transaction with checklist items & audit log
     const createdOrder = await prisma.$transaction(async (tx) => {
       const order = await tx.cuttingOrder.create({
         data: {
           orderNumber: finalOrderNumber,
           recipeId,
-          quantity: Number(quantity),
+          quantity: targetQty,
+          fabricRollId: fabricRollId?.trim() || null,
+          actualFabricUsed: actualFabric,
+          expectedFabric,
+          wastagePercentage,
           status: OrderStatus.PENDING,
           notes: notes?.trim() || null,
           createdById: user.userId,
           verificationItems: {
-            create: DEFAULT_VERIFICATION_CHECKLIST.map((item) => ({
-              itemKey: item.itemKey,
-              title: item.title,
-              expectedValue: item.expectedValue,
-            })),
+            create: verificationItemsToCreate,
           },
           auditLogs: {
             create: {
               userId: user.userId,
               action: "CREATED",
-              details: `Cutting order created for ${quantity} units by ${user.name || user.email}`,
+              details: `Cutting order created for ${targetQty} units (Fabric Roll: ${fabricRollId || "N/A"}) by ${user.name || user.email}`,
             },
           },
         },

@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  CUTTING
+  QC
+  SEWING
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  SUBMITTED
+  PASSED
+  FAILED
+  VERIFIED
+  REJECTED
+  SENT_TO_SEWING
+}
+
+enum ItemCheckStatus {
+  PENDING
+  PASS
+  FAIL
+}
+
+enum SewingStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String?
+  password      String
+  role          Role           @default(CUTTING)
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  cuttingOrders CuttingOrder[] @relation("CreatedOrders")
+  auditLogs     AuditLog[]
+}
+
+model Recipe {
+  id             String            @id @default(uuid())
+  code           String            @unique
+  name           String
+  category       String            @default("Apparel")
+  description    String?
+  version        String            @default("1.0")
+  fabricPerPiece Float             @default(1.5) // yards per garment piece
+  wastageCap     Float             @default(5.0) // allowed wastage % cap
+  isActive       Boolean           @default(true)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  components     RecipeComponent[]
+  orders         CuttingOrder[]
+}
+
+model RecipeComponent {
+  id        String   @id @default(uuid())
+  recipeId  String
+  name      String
+  code      String
+  quantity  Float    @default(1)
+  ratio     Int      @default(1) // Required pieces per single finished garment
+  unit      String   @default("panel")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  recipe    Recipe   @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+}
+
+model CuttingOrder {
+  id                String             @id @default(uuid())
+  orderNumber       String             @unique
+  recipeId          String
+  quantity          Int                // Target garments to produce
+  fabricRollId      String?            // e.g. FAB-ROLL-882
+  actualFabricUsed  Float?             // Actual yards consumed
+  expectedFabric    Float?             // Auto calculated: quantity * recipe.fabricPerPiece
+  wastagePercentage Float?             // ((actualFabricUsed - expectedFabric) / expectedFabric) * 100
+  status            OrderStatus        @default(PENDING)
+  notes             String?
+  rejectionReason   String?            // Required when status is REJECTED
+  verifiedById      String?            // ID of inspector who signed off
+  verifiedAt        DateTime?          // Timestamp of QC verification
+  createdById       String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  recipe            Recipe             @relation(fields: [recipeId], references: [id])
+  createdBy         User               @relation("CreatedOrders", fields: [createdById], references: [id])
+  verificationItems VerificationItem[]
+  auditLogs         AuditLog[]
+  sewingQueueItem   SewingQueueItem?
+}
+
+model VerificationItem {
+  id             String          @id @default(uuid())
+  cuttingOrderId String
+  componentName  String          @default("") // e.g. "Front Body Panel"
+  componentCode  String          @default("") // e.g. "FP-01"
+  ratio          Int             @default(1)
+  expectedQty    Int             @default(0) // Multiplier Engine result: targetQuantity * ratio
+  actualQty      Int?            // Physically counted by verifier
+  trafficStatus  String          @default("RED") // GREEN (==), YELLOW (>), RED (<)
+  itemKey        String?
+  title          String?
+  expectedValue  String?
+  actualValue    String?
+  status         ItemCheckStatus @default(PENDING)
+  comments       String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  cuttingOrder   CuttingOrder    @relation(fields: [cuttingOrderId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id             String       @id @default(uuid())
+  cuttingOrderId String
+  userId         String
+  action         String
+  details        String?
+  timestamp      DateTime     @default(now())
+  cuttingOrder   CuttingOrder @relation(fields: [cuttingOrderId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id])
+}
+
+model SewingQueueItem {
+  id              String       @id @default(uuid())
+  cuttingOrderId  String       @unique
+  status          SewingStatus @default(QUEUED)
+  targetPieces    Int
+  completedPieces Int          @default(0)
+  notes           String?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  cuttingOrder    CuttingOrder @relation(fields: [cuttingOrderId], references: [id], onDelete: Cascade)
+}

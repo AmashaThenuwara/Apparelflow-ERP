@@ -7,12 +7,10 @@ export async function GET() {
   try {
     await requireRole([Role.ADMIN, Role.SEWING]);
 
-    // Strictly fetch ONLY orders that have passed QC: VERIFIED or SENT_TO_SEWING
+    // Strictly fetch ONLY orders that have status VERIFIED at database level
     const queueOrders = await prisma.cuttingOrder.findMany({
       where: {
-        status: {
-          in: [OrderStatus.VERIFIED, OrderStatus.SENT_TO_SEWING],
-        },
+        status: OrderStatus.VERIFIED,
       },
       include: {
         recipe: {

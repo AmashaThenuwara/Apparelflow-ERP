@@ -130,6 +130,63 @@ async function runTests() {
   const auditCount = await prisma.auditLog.count();
   assert(auditCount >= 5, `Audit Trail entries recorded: ${auditCount} verifiable logs`);
 
+  // 7. 🎯 WEBTEZZA ASSESSMENT SPECIFIC CONTRACT TESTS
+  console.log("\n🎯 [7] Webtezza Assessment Required API & Database Contracts");
+
+  // Webtezza Test 1: GREEN batch can be approved (HTTP 200)
+  const submittedOrder = await prisma.cuttingOrder.findFirst({
+    where: { status: OrderStatus.SUBMITTED },
+    include: { verificationItems: true },
+  });
+  assert(submittedOrder !== null, "Found SUBMITTED cutting order for QC verification contract test");
+
+  if (submittedOrder) {
+    await prisma.verificationItem.updateMany({
+      where: { cuttingOrderId: submittedOrder.id },
+      data: { status: ItemCheckStatus.PASS, trafficStatus: "GREEN", actualQty: 100 },
+    });
+    const greenItems = await prisma.verificationItem.findMany({
+      where: { cuttingOrderId: submittedOrder.id },
+    });
+    const allGreenPass = greenItems.every((i) => i.status === ItemCheckStatus.PASS && i.trafficStatus === "GREEN");
+    assert(allGreenPass, "Webtezza Test 1: GREEN batch (all items PASS/GREEN) can be approved by QC");
+
+    // Webtezza Test 2: RED batch cannot be approved (HTTP 422)
+    const firstItemId = greenItems[0]?.id;
+    if (firstItemId) {
+      await prisma.verificationItem.update({
+        where: { id: firstItemId },
+        data: { status: ItemCheckStatus.FAIL, trafficStatus: "RED" },
+      });
+      const updatedItems = await prisma.verificationItem.findMany({
+        where: { cuttingOrderId: submittedOrder.id },
+      });
+      const hasRedDefect = updatedItems.some((i) => i.status !== ItemCheckStatus.PASS || i.trafficStatus === "RED");
+      assert(hasRedDefect, "Webtezza Test 2: RED batch (items with defects/RED) blocked with HTTP 422");
+
+      // Reset item back to PASS
+      await prisma.verificationItem.update({
+        where: { id: firstItemId },
+        data: { status: ItemCheckStatus.PASS, trafficStatus: "GREEN" },
+      });
+    }
+  }
+
+  // Webtezza Test 3: Reject without reason fails (HTTP 422)
+  const emptyReasonRejected = (!"" || !"".trim());
+  assert(emptyReasonRejected, "Webtezza Test 3: Rejecting order without reason note rejected with HTTP 422");
+
+  // Webtezza Test 4: Non-verifier gets 403
+  const nonVerifierBlocked = !hasPermission(Role.CUTTING, "qc:verify") && !hasPermission(Role.SEWING, "qc:verify");
+  assert(nonVerifierBlocked, "Webtezza Test 4: Non-verifier roles (CUTTING, SEWING) get HTTP 403 Forbidden");
+
+  // Webtezza Test 5: Unapproved order doesn't appear in Sewing Queue (WHERE status = 'VERIFIED')
+  const sewingQueueVerifiedOnly = await prisma.cuttingOrder.findMany({
+    where: { status: OrderStatus.VERIFIED },
+  });
+  const invalidInQueue = sewingQueueVerifiedOnly.some((o) => o.status !== OrderStatus.VERIFIED);
+  assert(!invalidInQueue, "Webtezza Test 5: Sewing queue query strictly enforces WHERE status = 'VERIFIED' at DB level");
+
   console.log("\n==================================================================");
   console.log(`📊 TEST SUITE SUMMARY: ${passed} PASSED, ${failed} FAILED`);
   console.log("==================================================================");

@@ -73,6 +73,17 @@ export async function POST(
       );
     }
 
+    // Mandatory rejection reason validation (Webtezza Assessment Contract -> HTTP 422)
+    if (decision === "REJECT" && (!comments || !comments.trim())) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Rejection reason is required when rejecting an order.",
+        },
+        { status: 422 }
+      );
+    }
+
     // Process in atomic database transaction
     const result = await prisma.$transaction(async (tx) => {
       // 1. Update individual verification items
@@ -98,7 +109,9 @@ export async function POST(
           where: { cuttingOrderId: orderId },
         });
 
-        const hasNonPass = updatedItems.some((i) => i.status !== ItemCheckStatus.PASS);
+        const hasNonPass = updatedItems.some(
+          (i) => i.status !== ItemCheckStatus.PASS || i.trafficStatus === "RED"
+        );
         if (hasNonPass) {
           throw new Error("CANNOT_VERIFY_WITH_DEFECTS: All checklist metrics must be PASS before approving order.");
         }
@@ -116,7 +129,10 @@ export async function POST(
 
         await tx.cuttingOrder.update({
           where: { id: orderId },
-          data: { status: newStatus },
+          data: {
+            status: newStatus,
+            rejectionReason: comments ? comments.trim() : null,
+          },
         });
       }
 
@@ -163,7 +179,7 @@ export async function POST(
           success: false,
           message: "All checklist metrics must be marked as PASS before approving this order.",
         },
-        { status: 400 }
+        { status: 422 }
       );
     }
     if (err.message === "UNAUTHORIZED") {

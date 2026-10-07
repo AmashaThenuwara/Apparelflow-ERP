@@ -88,10 +88,7 @@ export function validateTransition(
   return { valid: true, targetStatus: rule.toStatus };
 }
 
-/**
- * SEWING HARD-STOP SECURITY CHECK 🔐
- * A cutting order can ONLY be accessed or queued in Sewing if it has passed QC and is VERIFIED or SENT_TO_SEWING.
- */
+// Orders must be QC verified before entering sewing.
 export function isSewingApproved(status: OrderStatus): boolean {
   return status === OrderStatus.VERIFIED || status === OrderStatus.SENT_TO_SEWING;
 }

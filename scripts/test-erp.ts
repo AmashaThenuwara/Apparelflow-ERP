@@ -20,7 +20,7 @@ const prisma = new PrismaClient({ adapter });
 
 async function runTests() {
   console.log("==================================================================");
-  console.log("🏭 APPARELFLOW ERP — COMPREHENSIVE SECURITY & WORKFLOW TEST SUITE");
+  console.log("ApparelFlow ERP — Test Suite");
   console.log("==================================================================\n");
 
   let passed = 0;
@@ -37,7 +37,7 @@ async function runTests() {
   }
 
   // 1. Password Security & Hashing Tests
-  console.log("🔑 [1] Password Security & Bcrypt Hashing");
+  console.log("[1] Password Security & Bcrypt Hashing");
   const adminUser = await prisma.user.findUnique({ where: { email: "admin@apparelflow.test" } });
   assert(adminUser !== null, "Admin user exists in database");
   assert(Boolean(adminUser?.password.startsWith("$2b$")), "Password in database is securely bcrypt-hashed");
@@ -49,7 +49,7 @@ async function runTests() {
   assert(!wrongMatch, "Invalid password rejected by bcrypt comparison");
 
   // 2. JWT Session Token Tests
-  console.log("\n🎫 [2] JWT Session Management (jose)");
+  console.log("\n[2] JWT Session Management");
   const token = await createSessionToken({
     userId: adminUser?.id || "test-id",
     email: "admin@apparelflow.test",
@@ -61,7 +61,7 @@ async function runTests() {
   assert(payload?.email === "admin@apparelflow.test" && payload?.role === "ADMIN", "JWT session payload verified and extracted");
 
   // 3. RBAC Route & Action Matrix Tests
-  console.log("\n🛡️ [3] Role-Based Access Control (RBAC) Enforcement");
+  console.log("\n[3] Role-Based Access Control (RBAC)");
   assert(canAccessPath(Role.ADMIN, "/admin/users"), "ADMIN can access /admin/users");
   assert(!canAccessPath(Role.CUTTING, "/admin/users"), "CUTTING is blocked from /admin/users");
   assert(!canAccessPath(Role.QC, "/admin/users"), "QC is blocked from /admin/users");
@@ -79,7 +79,7 @@ async function runTests() {
   assert(!hasPermission(Role.SEWING, "qc:verify"), "SEWING does NOT have qc:verify permission");
 
   // 4. Server-Side Workflow State Transition Tests
-  console.log("\n🔄 [4] Strict Server-Side State Transitions");
+  console.log("\n[4] Server-Side State Transitions");
   // Valid transitions
   const startTransition = validateTransition(OrderStatus.PENDING, "START", Role.CUTTING);
   assert(startTransition.valid && startTransition.targetStatus === OrderStatus.IN_PROGRESS, "CUTTING can START a PENDING order -> IN_PROGRESS");
@@ -109,18 +109,18 @@ async function runTests() {
   const unauthorizedRole = validateTransition(OrderStatus.SUBMITTED, "VERIFY", Role.SEWING);
   assert(!unauthorizedRole.valid, "UNAUTHORIZED ROLE BLOCKED: SEWING role cannot verify QC orders");
 
-  // 5. 🚨 SEWING HARD-STOP SECURITY RULE 🔐
-  console.log("\n🚨 [5] Sewing Hard-Stop Gate (Assessment Highlight)");
+  // 5. Sewing Gate Check
+  console.log("\n[5] Sewing Queue Verification Gate");
   assert(isSewingApproved(OrderStatus.VERIFIED), "Order with status 'VERIFIED' is approved for sewing line");
   assert(isSewingApproved(OrderStatus.SENT_TO_SEWING), "Order with status 'SENT_TO_SEWING' is approved for sewing line");
 
-  assert(!isSewingApproved(OrderStatus.PENDING), "HARD-STOP ENFORCED: PENDING orders rejected from sewing");
-  assert(!isSewingApproved(OrderStatus.IN_PROGRESS), "HARD-STOP ENFORCED: IN_PROGRESS orders rejected from sewing");
-  assert(!isSewingApproved(OrderStatus.SUBMITTED), "HARD-STOP ENFORCED: SUBMITTED orders rejected from sewing");
-  assert(!isSewingApproved(OrderStatus.REJECTED), "HARD-STOP ENFORCED: REJECTED orders rejected from sewing");
+  assert(!isSewingApproved(OrderStatus.PENDING), "UNVERIFIED BLOCKED: PENDING orders rejected from sewing");
+  assert(!isSewingApproved(OrderStatus.IN_PROGRESS), "UNVERIFIED BLOCKED: IN_PROGRESS orders rejected from sewing");
+  assert(!isSewingApproved(OrderStatus.SUBMITTED), "UNVERIFIED BLOCKED: SUBMITTED orders rejected from sewing");
+  assert(!isSewingApproved(OrderStatus.REJECTED), "UNVERIFIED BLOCKED: REJECTED orders rejected from sewing");
 
   // 6. Database Relational Integrity
-  console.log("\n📦 [6] Database Relational Integrity & Demo Data");
+  console.log("\n[6] Database Relational Integrity & Demo Data");
   const recipesCount = await prisma.recipe.count();
   assert(recipesCount >= 3, `Garment Recipes seeded: ${recipesCount} blueprints`);
 
@@ -130,8 +130,8 @@ async function runTests() {
   const auditCount = await prisma.auditLog.count();
   assert(auditCount >= 5, `Audit Trail entries recorded: ${auditCount} verifiable logs`);
 
-  // 7. 🎯 WEBTEZZA ASSESSMENT SPECIFIC CONTRACT TESTS
-  console.log("\n🎯 [7] Webtezza Assessment Required API & Database Contracts");
+  // 7. Assessment Required Integration Tests
+  console.log("\n[7] Assessment Required Verification Tests");
 
   // Webtezza Test 1: GREEN batch can be approved (HTTP 200)
   const submittedOrder = await prisma.cuttingOrder.findFirst({

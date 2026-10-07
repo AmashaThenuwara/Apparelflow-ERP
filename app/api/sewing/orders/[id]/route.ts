@@ -4,19 +4,7 @@ import { requireRole } from "@/lib/auth";
 import { isSewingApproved } from "@/lib/workflow";
 import { Role, SewingStatus, OrderStatus } from "@prisma/client";
 
-/**
- * 🚨 SEWING HARD-STOP SECURITY GATE 🔐
- * 
- * Verifies that:
- * 1. Request is Authenticated
- * 2. User has role SEWING or ADMIN
- * 3. Target Cutting Order exists
- * 4. Target Cutting Order status is VERIFIED or SENT_TO_SEWING
- * 
- * If the order is PENDING, IN_PROGRESS, SUBMITTED, or REJECTED,
- * this endpoint returns a 403 / 409 SECURITY REJECTION immediately,
- * completely blocking unauthorized production access on the server side.
- */
+// Verify order status before allowing sewing line access.
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -42,13 +30,13 @@ export async function GET(
       return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
     }
 
-    // 🚨 BACKEND HARD-STOP CHECK
+    // Only orders verified by QC can be accessed
     if (!isSewingApproved(order.status)) {
       return NextResponse.json(
         {
           success: false,
           securityViolation: true,
-          message: `HARD-STOP VIOLATION: Order '${order.orderNumber}' has status '${order.status}'. Only orders verified by QC ('VERIFIED' or 'SENT_TO_SEWING') are permitted into the Sewing line.`,
+          message: `Forbidden: Order '${order.orderNumber}' has status '${order.status}'. Only QC verified orders are permitted into sewing.`,
         },
         { status: 403 }
       );
@@ -90,13 +78,13 @@ export async function POST(
       return NextResponse.json({ success: false, message: "Order not found" }, { status: 404 });
     }
 
-    // 🚨 BACKEND HARD-STOP CHECK
+    // Only orders verified by QC can be updated
     if (!isSewingApproved(order.status)) {
       return NextResponse.json(
         {
           success: false,
           securityViolation: true,
-          message: `HARD-STOP VIOLATION: Order '${order.orderNumber}' has status '${order.status}'. You cannot perform sewing operations on unverified orders.`,
+          message: `Forbidden: Order '${order.orderNumber}' has status '${order.status}'. Cannot perform sewing operations on unverified orders.`,
         },
         { status: 403 }
       );

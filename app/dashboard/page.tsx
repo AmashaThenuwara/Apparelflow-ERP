@@ -14,45 +14,55 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
-  const [
-    totalUsers,
-    totalRecipes,
-    totalOrders,
-    pendingOrders,
-    inProgressOrders,
-    submittedOrders,
-    verifiedOrders,
-    rejectedOrders,
-    sewingOrders,
-    recentOrders,
-    recentAuditLogs,
-  ] = await Promise.all([
-    prisma.user.count(),
-    prisma.recipe.count({ where: { isActive: true } }),
-    prisma.cuttingOrder.count(),
-    prisma.cuttingOrder.count({ where: { status: OrderStatus.PENDING } }),
-    prisma.cuttingOrder.count({ where: { status: OrderStatus.IN_PROGRESS } }),
-    prisma.cuttingOrder.count({ where: { status: OrderStatus.SUBMITTED } }),
-    prisma.cuttingOrder.count({ where: { status: OrderStatus.VERIFIED } }),
-    prisma.cuttingOrder.count({ where: { status: OrderStatus.REJECTED } }),
-    prisma.cuttingOrder.count({ where: { status: OrderStatus.SENT_TO_SEWING } }),
-    prisma.cuttingOrder.findMany({
+  let totalUsers = 0;
+  let totalRecipes = 0;
+  let totalOrders = 0;
+  let pendingOrders = 0;
+  let inProgressOrders = 0;
+  let submittedOrders = 0;
+  let verifiedOrders = 0;
+  let rejectedOrders = 0;
+  let sewingOrders = 0;
+  let recentOrders: any[] = [];
+  let recentAuditLogs: any[] = [];
+
+  try {
+    totalUsers = await prisma.user.count();
+    totalRecipes = await prisma.recipe.count({ where: { isActive: true } });
+
+    const statusCounts = await prisma.cuttingOrder.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    });
+
+    totalOrders = statusCounts.reduce((acc, curr) => acc + curr._count._all, 0);
+    pendingOrders = statusCounts.find((s) => s.status === OrderStatus.PENDING)?._count._all || 0;
+    inProgressOrders = statusCounts.find((s) => s.status === OrderStatus.IN_PROGRESS)?._count._all || 0;
+    submittedOrders = statusCounts.find((s) => s.status === OrderStatus.SUBMITTED)?._count._all || 0;
+    verifiedOrders = statusCounts.find((s) => s.status === OrderStatus.VERIFIED)?._count._all || 0;
+    rejectedOrders = statusCounts.find((s) => s.status === OrderStatus.REJECTED)?._count._all || 0;
+    sewingOrders = statusCounts.find((s) => s.status === OrderStatus.SENT_TO_SEWING)?._count._all || 0;
+
+    recentOrders = await prisma.cuttingOrder.findMany({
       include: {
         recipe: { select: { name: true, code: true } },
         createdBy: { select: { name: true, role: true } },
       },
       orderBy: { updatedAt: "desc" },
       take: 6,
-    }),
-    prisma.auditLog.findMany({
+    });
+
+    recentAuditLogs = await prisma.auditLog.findMany({
       include: {
         user: { select: { name: true, role: true } },
         cuttingOrder: { select: { orderNumber: true } },
       },
       orderBy: { timestamp: "desc" },
       take: 6,
-    }),
-  ]);
+    });
+  } catch (err) {
+    console.error("Dashboard Data Fetch Error:", err);
+  }
 
   return (
     <AppLayout user={user}>

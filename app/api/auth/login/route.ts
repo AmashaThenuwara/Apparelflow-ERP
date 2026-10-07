@@ -60,10 +60,14 @@ export async function POST(req: NextRequest) {
         role: user.role,
       },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Login API error:", error);
     return NextResponse.json(
-      { success: false, message: "An unexpected error occurred during login" },
+      { 
+        success: false, 
+        message: error?.message || "An unexpected error occurred during login",
+        details: process.env.NODE_ENV === "development" ? String(error) : undefined
+      },
       { status: 500 }
     );
   }

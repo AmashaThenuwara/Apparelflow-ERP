@@ -2,21 +2,26 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-const rawUrl = (process.env.DIRECT_URL || process.env.DATABASE_URL || "")
+const connectionString = (
+  process.env.DATABASE_URL ||
+  process.env.DIRECT_URL ||
+  ""
+)
   .replace(/^["']|["']$/g, "")
   .trim();
 
-if (!rawUrl) {
-  console.error("❌ CRITICAL ERROR: Neither DIRECT_URL nor DATABASE_URL environment variable is set on Vercel!");
+if (!connectionString) {
+  console.error("❌ CRITICAL ERROR: Neither DATABASE_URL nor DIRECT_URL is set!");
 }
 
-const cleanUrl = rawUrl.replace(/([?&])sslmode=[^&]+(&|$)/, "$1").replace(/[?&]$/, "");
-
 const pool = new Pool({
-  connectionString: cleanUrl,
+  connectionString,
   ssl: {
     rejectUnauthorized: false,
   },
+  max: 10,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000,
 });
 
 const adapter = new PrismaPg(pool);

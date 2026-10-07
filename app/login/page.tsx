@@ -36,8 +36,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      window.location.href = "/dashboard";
     } catch {
       setError("Unable to connect to the server. Please try again.");
       setLoading(false);

@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
-const rawUrl = process.env.DATABASE_URL || process.env.DIRECT_URL || "";
+const rawUrl = process.env.DIRECT_URL || process.env.DATABASE_URL || "";
 const cleanUrl = rawUrl.replace(/([?&])sslmode=[^&]+(&|$)/, "$1").replace(/[?&]$/, "");
 
 const pool = new Pool({
